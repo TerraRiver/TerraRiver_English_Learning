@@ -41,7 +41,7 @@ export async function PUT(
   try {
     const { id } = await params
     const body = await request.json()
-    const { term, phonetic, definition, tags, examples } = body
+    const { term, phonetic, partOfSpeech, definition, variants, tags, examples } = body
 
     // 先删除旧例句，再创建新例句
     await prisma.example.deleteMany({
@@ -53,12 +53,14 @@ export async function PUT(
       data: {
         term,
         phonetic,
+        partOfSpeech,
         definition,
+        variants,
         tags,
         examples: {
           create: examples || [],
         },
-      },
+      } as Parameters<typeof prisma.word.update>[0]['data'],
       include: {
         examples: true,
         progress: true,

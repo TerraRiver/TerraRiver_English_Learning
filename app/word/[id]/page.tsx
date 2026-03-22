@@ -8,7 +8,9 @@ interface Word {
   id: number
   term: string
   phonetic?: string
+  partOfSpeech?: string
   definition: string
+  variants?: string
   tags?: string
   examples: Array<{
     id: number
@@ -20,6 +22,7 @@ interface Word {
     nextReview: string
     interval: number
     repetitions: number
+    lapses: number
   }
 }
 
@@ -35,31 +38,21 @@ export default function WordDetailPage({ params }: { params: Promise<{ id: strin
   }, [params])
 
   useEffect(() => {
-    if (resolvedParams) {
-      fetchWord()
-    }
+    if (resolvedParams) fetchWord()
   }, [resolvedParams])
 
   const fetchWord = async () => {
     if (!resolvedParams) return
-
     const response = await fetch(`/api/words/${resolvedParams.id}`)
-    if (response.ok) {
-      const data = await response.json()
-      setWord(data)
-    }
+    if (response.ok) setWord(await response.json())
     setLoading(false)
   }
 
   const handleDelete = async () => {
     if (!confirm('确定要删除这个词条吗？')) return
     if (!resolvedParams) return
-
     setDeleting(true)
-    const response = await fetch(`/api/words/${resolvedParams.id}`, {
-      method: 'DELETE',
-    })
-
+    const response = await fetch(`/api/words/${resolvedParams.id}`, { method: 'DELETE' })
     if (response.ok) {
       router.push('/dictionary')
     } else {
@@ -71,7 +64,7 @@ export default function WordDetailPage({ params }: { params: Promise<{ id: strin
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载中...</div>
+        <div className="text-gray-400 text-sm">加载中...</div>
       </div>
     )
   }
@@ -79,11 +72,8 @@ export default function WordDetailPage({ params }: { params: Promise<{ id: strin
   if (!word) {
     return (
       <div className="text-center py-12">
-        <div className="text-gray-500">词条不存在</div>
-        <button
-          onClick={() => router.push('/dictionary')}
-          className="mt-4 text-blue-600 hover:text-blue-800"
-        >
+        <div className="text-gray-400">词条不存在</div>
+        <button onClick={() => router.push('/dictionary')} className="mt-4 text-sm text-gray-600 hover:text-gray-900 underline">
           返回词典
         </button>
       </div>
@@ -91,122 +81,128 @@ export default function WordDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* 操作按钮 */}
+    <div className="max-w-2xl mx-auto space-y-8">
+      {/* 操作栏 */}
       <div className="flex justify-between items-center">
-        <button
-          onClick={() => router.back()}
-          className="text-gray-600 hover:text-gray-900"
-        >
+        <button onClick={() => router.back()} className="text-sm text-gray-400 hover:text-gray-900 transition-colors">
           ← 返回
         </button>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.push(`/word/${resolvedParams?.id}/edit`)}
+            className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          >
+            编辑
+          </button>
           <button
             onClick={handleDelete}
             disabled={deleting}
-            className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-md border border-red-200 disabled:opacity-50"
+            className="text-sm text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
           >
-            {deleting ? '删除中...' : '删除'}
+            {deleting ? '删除中...' : '删除词条'}
           </button>
         </div>
       </div>
 
-      {/* 词条主体 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        {/* 单词和音标 */}
-        <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-4xl font-bold text-gray-900">{word.term}</h1>
-          <SpeakButton text={word.term} className="text-blue-600" />
+      {/* 词头 */}
+      <div>
+        <div className="flex items-center gap-3 mb-2">
+          <h1 className="text-5xl font-bold tracking-tight text-gray-900">{word.term}</h1>
+          <SpeakButton text={word.term} className="text-gray-400 hover:text-gray-700" />
         </div>
-
         {word.phonetic && (
-          <div className="text-lg text-gray-600 mb-4">{word.phonetic}</div>
+          <p className="text-lg text-gray-400 font-mono">{word.phonetic}</p>
         )}
-
-        {/* 标签 */}
-        {word.tags && (
-          <div className="flex flex-wrap gap-2 mb-6">
-            {word.tags.split(',').map((tag, index) => (
-              <span
-                key={index}
-                className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full"
-              >
-                {tag.trim()}
+        {word.partOfSpeech && (
+          <div className="flex flex-wrap gap-1.5 mt-3">
+            {word.partOfSpeech.split(',').map((pos, i) => (
+              <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md italic">
+                {pos.trim()}
               </span>
             ))}
           </div>
         )}
-
-        {/* 释义 */}
-        <div className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase mb-2">
-            释义 (Definition)
-          </h2>
-          <p className="text-lg text-gray-800 leading-relaxed">{word.definition}</p>
-        </div>
-
-        {/* 例句 */}
-        {word.examples.length > 0 && (
-          <div>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase mb-4">
-              例句 (Examples)
-            </h2>
-            <div className="space-y-4">
-              {word.examples.map((example) => (
-                <div
-                  key={example.id}
-                  className="pl-4 border-l-4 border-blue-200 py-2"
-                >
-                  <div className="flex items-start gap-2 mb-2">
-                    <p className="text-gray-800 flex-1 italic">{example.sentenceEn}</p>
-                    <SpeakButton
-                      text={example.sentenceEn}
-                      className="text-gray-400 hover:text-blue-600 flex-shrink-0"
-                    />
-                  </div>
-                  {example.sentenceCn && (
-                    <p className="text-gray-600 text-sm">{example.sentenceCn}</p>
-                  )}
-                  {example.source && (
-                    <p className="text-gray-400 text-xs mt-1">
-                      来源: {example.source}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 复习进度 */}
-        {word.progress && (
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h2 className="text-sm font-semibold text-gray-500 uppercase mb-3">
-              复习进度
-            </h2>
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <div className="text-gray-600">下次复习</div>
-                <div className="font-medium text-gray-900">
-                  {new Date(word.progress.nextReview).toLocaleDateString('zh-CN')}
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-600">间隔天数</div>
-                <div className="font-medium text-gray-900">
-                  {word.progress.interval} 天
-                </div>
-              </div>
-              <div>
-                <div className="text-gray-600">复习次数</div>
-                <div className="font-medium text-gray-900">
-                  {word.progress.repetitions} 次
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* 标签 */}
+      {word.tags && (
+        <div className="flex flex-wrap gap-1.5">
+          {word.tags.split(',').map((tag, i) => (
+            <span key={i} className="px-2.5 py-1 bg-gray-100 text-gray-600 text-xs rounded-lg">
+              {tag.trim()}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* 变体 */}
+      {word.variants && (
+        <div className="flex flex-wrap gap-1.5">
+          {word.variants.split(',').map((v, i) => (
+            <span key={i} className="px-2.5 py-1 bg-gray-50 text-gray-500 text-xs rounded-lg font-mono">
+              {v.trim()}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* 释义 */}
+      <div>
+        <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">释义</div>
+        <p className="text-lg text-gray-800 leading-relaxed">{word.definition}</p>
+      </div>
+
+      {/* 例句 */}
+      {word.examples.length > 0 && (
+        <div>
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">例句</div>
+          <div className="space-y-4">
+            {word.examples.map((example) => (
+              <div key={example.id} className="pl-4 border-l-2 border-gray-200">
+                <div className="flex items-start gap-2">
+                  <p className="text-gray-700 flex-1 italic leading-relaxed">{example.sentenceEn}</p>
+                  <SpeakButton text={example.sentenceEn} className="text-gray-300 hover:text-gray-600 flex-shrink-0 mt-0.5" />
+                </div>
+                {example.sentenceCn && (
+                  <p className="text-gray-500 text-sm mt-1">{example.sentenceCn}</p>
+                )}
+                {example.source && (
+                  <p className="text-gray-400 text-xs mt-1">来源: {example.source}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 复习进度 */}
+      {word.progress && (
+        <div className="pt-6 border-t border-gray-100">
+          <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">复习进度</div>
+          <div className="grid grid-cols-4 gap-4">
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs text-gray-400 mb-1">下次复习</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {new Date(word.progress.nextReview).toLocaleDateString('zh-CN')}
+              </div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs text-gray-400 mb-1">间隔天数</div>
+              <div className="text-sm font-semibold text-gray-900">{word.progress.interval} 天</div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs text-gray-400 mb-1">复习次数</div>
+              <div className="text-sm font-semibold text-gray-900">{word.progress.repetitions} 次</div>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="text-xs text-gray-400 mb-1">遗忘次数</div>
+              <div className={`text-sm font-semibold ${word.progress.lapses > 0 ? 'text-gray-900' : 'text-gray-400'}`}>
+                {word.progress.lapses} 次
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { isDueForReview } from '@/lib/sm2'
 
-// GET /api/review - 获取今日待复习的单词
-export async function GET(request: NextRequest) {
+// GET /api/review - 按紧迫度排序返回全部词（最过期的在前，未到期的在后）
+export async function GET() {
   try {
     const allWords = await prisma.word.findMany({
       include: {
@@ -12,21 +12,23 @@ export async function GET(request: NextRequest) {
       },
     })
 
-    // 筛选出今天需要复习的单词
-    const dueWords = allWords.filter((word) => {
-      if (!word.progress) return true // 没有复习记录的单词也需要复习
-      return isDueForReview(word.progress.nextReview)
+    // 排序：无复习记录（新词）优先，之后按 nextReview 升序（最过期→最晚到期）
+    allWords.sort((a, b) => {
+      if (!a.progress && !b.progress) return 0
+      if (!a.progress) return -1
+      if (!b.progress) return 1
+      return new Date(a.progress.nextReview).getTime() - new Date(b.progress.nextReview).getTime()
     })
 
-    return NextResponse.json({
-      total: dueWords.length,
-      words: dueWords,
-    })
+    const dueCount = allWords.filter(
+      (w) => !w.progress || isDueForReview(w.progress.nextReview)
+    ).length
+
+    return NextResponse.json({ total: allWords.length, dueCount, words: allWords })
   } catch (error) {
     console.error('获取复习列表失败:', error)
-    return NextResponse.json(
-      { error: '获取复习列表失败' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: '获取复习列表失败' }, { status: 500 })
   }
 }
+
+

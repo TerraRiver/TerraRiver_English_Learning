@@ -21,72 +21,49 @@ export default function Home() {
   useEffect(() => {
     fetch('/api/dashboard')
       .then((res) => res.json())
-      .then((data) => {
-        setData(data)
-        setLoading(false)
-      })
-      .catch((error) => {
-        console.error('获取仪表盘数据失败:', error)
-        setLoading(false)
-      })
+      .then((data) => { setData(data); setLoading(false) })
+      .catch(() => setLoading(false))
   }, [])
 
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <div className="text-gray-500">加载中...</div>
+        <div className="text-gray-400 text-sm">加载中...</div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-8">
+    <div className="max-w-3xl mx-auto space-y-12">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          IR 英语学术知识库
-        </h1>
-        <p className="mt-2 text-gray-600">
-          专注于国际关系领域的个人英语学习工具
-        </p>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900">单词本</h1>
+        <p className="mt-2 text-gray-500">个人英语词汇知识库</p>
       </div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-sm font-medium text-gray-600">总词条数</div>
-          <div className="mt-2 text-3xl font-bold text-blue-600">
-            {data?.totalWords || 0}
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-gray-50 rounded-2xl p-6">
+          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">总词条数</div>
+          <div className="mt-2 text-4xl font-bold text-gray-900">{data?.totalWords || 0}</div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-sm font-medium text-gray-600">今日待复习</div>
-          <div className="mt-2 text-3xl font-bold text-orange-600">
-            {data?.dueForReview || 0}
-          </div>
+        <div className="bg-gray-50 rounded-2xl p-6">
+          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">今日待复习</div>
+          <div className="mt-2 text-4xl font-bold text-gray-900">{data?.dueForReview || 0}</div>
           {(data?.dueForReview ?? 0) > 0 && (
-            <Link
-              href="/review"
-              className="mt-3 inline-block text-sm text-blue-600 hover:text-blue-800"
-            >
+            <Link href="/review" className="mt-3 inline-block text-sm text-gray-500 hover:text-gray-900 transition-colors">
               开始复习 →
             </Link>
           )}
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="text-sm font-medium text-gray-600">快速操作</div>
+        <div className="bg-gray-50 rounded-2xl p-6">
+          <div className="text-xs font-medium text-gray-400 uppercase tracking-wider">快速操作</div>
           <div className="mt-3 space-y-2">
-            <Link
-              href="/word/new"
-              className="block text-sm text-blue-600 hover:text-blue-800"
-            >
+            <Link href="/word/new" className="block text-sm text-gray-500 hover:text-gray-900 transition-colors">
               + 添加新词条
             </Link>
-            <Link
-              href="/dictionary"
-              className="block text-sm text-blue-600 hover:text-blue-800"
-            >
+            <Link href="/dictionary" className="block text-sm text-gray-500 hover:text-gray-900 transition-colors">
               浏览词典
             </Link>
           </div>
@@ -94,35 +71,29 @@ export default function Home() {
       </div>
 
       {/* 最近添加的词条 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">最近添加</h2>
-        </div>
-        <div className="divide-y divide-gray-200">
+      <div>
+        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">最近添加</h2>
+        <div className="divide-y divide-gray-100">
           {data?.recentWords && data.recentWords.length > 0 ? (
             data.recentWords.map((word) => (
               <Link
                 key={word.id}
                 href={`/word/${word.id}`}
-                className="block px-6 py-4 hover:bg-gray-50 transition-colors"
+                className="flex justify-between items-start py-4 -mx-4 px-4 hover:bg-gray-50 rounded-xl transition-colors"
               >
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="font-medium text-gray-900">{word.term}</div>
-                    <div className="mt-1 text-sm text-gray-600 line-clamp-1">
-                      {word.definition}
-                    </div>
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {new Date(word.createdAt).toLocaleDateString('zh-CN')}
-                  </div>
+                <div className="min-w-0">
+                  <div className="font-medium text-gray-900">{word.term}</div>
+                  <div className="mt-0.5 text-sm text-gray-500 line-clamp-1">{word.definition}</div>
+                </div>
+                <div className="text-xs text-gray-400 ml-4 shrink-0 pt-0.5">
+                  {new Date(word.createdAt).toLocaleDateString('zh-CN')}
                 </div>
               </Link>
             ))
           ) : (
-            <div className="px-6 py-8 text-center text-gray-500">
+            <div className="py-8 text-center text-gray-400 text-sm">
               还没有词条，
-              <Link href="/word/new" className="text-blue-600 hover:text-blue-800">
+              <Link href="/word/new" className="text-gray-600 hover:text-gray-900 underline">
                 添加第一个词条
               </Link>
             </div>

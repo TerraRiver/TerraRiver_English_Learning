@@ -12,10 +12,12 @@ datasource db {
 // 1. 单词/词条表
 model Word {
   id          Int      @id @default(autoincrement())
-  term        String   @unique                 // 单词本身，唯一
-  phonetic    String?                          // 音标文本，如 "/tɜːrm/"
-  definition  String                           // 主要释义
-  tags        String?                          // 标签，用逗号分隔字符串存储，如 "IR,Economy"
+  term          String   @unique               // 单词本身，唯一
+  phonetic      String?                        // 音标文本，如 "/tɜːrm/"
+  partOfSpeech  String?                        // 词性，如 "noun" / "verb" / "adjective"
+  definition    String                         // 主要释义
+  variants      String?                        // 单词变体，逗号分隔，如 "hegemonies (pl.),hegemonic (adj.)"
+  tags          String?                        // 标签，用逗号分隔字符串存储，如 "IR,Economy"
 
   // 关联
   examples    Example[]                        // 一对多：一个单词有多个例句
@@ -44,8 +46,9 @@ model ReviewProgress {
 
   nextReview    DateTime  // 下一次复习的具体日期
   interval      Int       @default(0)   // 当前间隔天数
-  easeFactor    Float     @default(2.5) // 难度系数 (EF)，初始为 2.5
+  easeFactor    Float     @default(2.5) // 难度系数 (EF)，初始为 2.5，上限 5.0
   repetitions   Int       @default(0)   // 连续成功复习次数
+  lapses        Int       @default(0)   // 累计遗忘次数（评为 Again 的次数）
 
   lastReviewed  DateTime  @default(now()) // 上次复习时间
 }

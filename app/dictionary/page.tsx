@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
 interface Word {
@@ -18,6 +18,9 @@ export default function DictionaryPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedLetter, setSelectedLetter] = useState('')
+  const [importMsg, setImportMsg] = useState('')
+  const [importing, setImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetchWords()
@@ -27,7 +30,6 @@ export default function DictionaryPage() {
     setLoading(true)
     const params = new URLSearchParams()
     if (selectedLetter) params.append('letter', selectedLetter)
-
     const response = await fetch(`/api/words?${params}`)
     const data = await response.json()
     setWords(data)
@@ -39,126 +41,153 @@ export default function DictionaryPage() {
     word.definition.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    setImportMsg('')
+    const formData = new FormData()
+    formData.append('file', file)
+    try {
+      const res = await fetch('/api/import/csv', { method: 'POST', body: formData })
+      const data = await res.json()
+      if (!res.ok) {
+        setImportMsg(`导入失败：${data.error}`)
+      } else {
+        setImportMsg(`导入完成：新增 ${data.imported} 条，跳过 ${data.skipped} 条`)
+        if (data.imported > 0) fetchWords()
+      }
+    } catch {
+      setImportMsg('导入失败，请重试')
+    } finally {
+      setImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">词典</h1>
-        <p className="mt-1 text-sm text-gray-600">
-          浏览和搜索你的词条库
-        </p>
-      </div>
-
-      {/* 搜索框 */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="搜索单词或释义..."
-          className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {/* A-Z 筛选器 */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedLetter('')}
-            className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-              selectedLetter === ''
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
+    <div className="max-w-3xl mx-auto space-y-8">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-gray-900">词典</h1>
+          <p className="mt-1 text-sm text-gray-500">浏览和搜索你的词条库</p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 pt-1">
+          <a
+            href="/api/export/csv"
+            download
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           >
-            全部
+            导出 CSV
+          </a>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            disabled={importing}
+            className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {importing ? '导入中...' : '导入 CSV'}
           </button>
-          {LETTERS.map((letter) => (
-            <button
-              key={letter}
-              onClick={() => setSelectedLetter(letter)}
-              className={`px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                selectedLetter === letter
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {letter}
-            </button>
-          ))}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleImport}
+          />
         </div>
       </div>
 
-      {/* 词条列表 */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {loading ? (
-          <div className="p-8 text-center text-gray-500">加载中...</div>
-        ) : filteredWords.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            {searchTerm || selectedLetter ? '没有找到匹配的词条' : '还没有词条'}
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-200">
-            {filteredWords.map((word) => (
-              <Link
-                key={word.id}
-                href={`/word/${word.id}`}
-                className="block px-6 py-4 hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-lg font-semibold text-gray-900">
-                        {word.term}
-                      </span>
-                      {word.phonetic && (
-                        <span className="text-sm text-gray-500">
-                          {word.phonetic}
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 text-sm text-gray-600 line-clamp-2">
-                      {word.definition}
-                    </div>
-                    {word.tags && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {word.tags.split(',').map((tag, index) => (
-                          <span
-                            key={index}
-                            className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full"
-                          >
-                            {tag.trim()}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    strokeWidth={1.5}
-                    stroke="currentColor"
-                    className="w-5 h-5 text-gray-400 flex-shrink-0 ml-4"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M8.25 4.5l7.5 7.5-7.5 7.5"
-                    />
-                  </svg>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
+      {importMsg && (
+        <div className={`px-4 py-2.5 rounded-xl text-sm ${importMsg.includes('失败') ? 'bg-red-50 text-red-600' : 'bg-green-50 text-green-700'}`}>
+          {importMsg}
+        </div>
+      )}
+
+      {/* 搜索框 */}
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="搜索单词或释义..."
+        className="w-full px-4 py-3 bg-gray-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 placeholder:text-gray-400"
+      />
+
+      {/* A-Z 筛选器 */}
+      <div className="flex flex-wrap gap-1">
+        <button
+          onClick={() => setSelectedLetter('')}
+          className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+            selectedLetter === ''
+              ? 'bg-gray-900 text-white'
+              : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+          }`}
+        >
+          全部
+        </button>
+        {LETTERS.map((letter) => (
+          <button
+            key={letter}
+            onClick={() => setSelectedLetter(letter)}
+            className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+              selectedLetter === letter
+                ? 'bg-gray-900 text-white'
+                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          >
+            {letter}
+          </button>
+        ))}
       </div>
 
-      {/* 统计 */}
+      {/* 词条列表 */}
+      {loading ? (
+        <div className="py-16 text-center text-gray-400 text-sm">加载中...</div>
+      ) : filteredWords.length === 0 ? (
+        <div className="py-16 text-center text-gray-400 text-sm">
+          {searchTerm || selectedLetter ? '没有找到匹配的词条' : '还没有词条'}
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100">
+          {filteredWords.map((word) => (
+            <Link
+              key={word.id}
+              href={`/word/${word.id}`}
+              className="flex justify-between items-start py-4 -mx-4 px-4 hover:bg-gray-50 rounded-xl transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-semibold text-gray-900">{word.term}</span>
+                  {word.phonetic && (
+                    <span className="text-sm text-gray-400">{word.phonetic}</span>
+                  )}
+                </div>
+                <div className="mt-0.5 text-sm text-gray-500 line-clamp-2">{word.definition}</div>
+                {word.tags && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {word.tags.split(',').map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-md"
+                      >
+                        {tag.trim()}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 text-gray-300 shrink-0 ml-4 mt-1">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </Link>
+          ))}
+        </div>
+      )}
+
       {!loading && (
-        <div className="text-sm text-gray-500 text-center">
+        <div className="text-xs text-gray-400 text-center pb-4">
           共 {filteredWords.length} 个词条
-          {searchTerm && ` (搜索: "${searchTerm}")`}
-          {selectedLetter && ` (字母: ${selectedLetter})`}
+          {searchTerm && ` · 搜索 "${searchTerm}"`}
+          {selectedLetter && ` · 字母 ${selectedLetter}`}
         </div>
       )}
     </div>

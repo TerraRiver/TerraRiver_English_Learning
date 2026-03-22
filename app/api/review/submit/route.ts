@@ -8,42 +8,30 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { wordId, quality } = body
 
-    // 验证参数
     if (!wordId || !quality) {
-      return NextResponse.json(
-        { error: '缺少必要参数' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: '缺少必要参数' }, { status: 400 })
     }
 
     if (!['again', 'hard', 'good', 'easy'].includes(quality)) {
-      return NextResponse.json(
-        { error: '无效的质量评级' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: '无效的质量评级' }, { status: 400 })
     }
 
-    // 获取当前复习进度
     const progress = await prisma.reviewProgress.findUnique({
       where: { wordId: parseInt(wordId) },
-    })
+    }) as (Awaited<ReturnType<typeof prisma.reviewProgress.findUnique>> & { lapses: number }) | null
 
     if (!progress) {
-      return NextResponse.json(
-        { error: '复习进度不存在' },
-        { status: 404 }
-      )
+      return NextResponse.json({ error: '复习进度不存在' }, { status: 404 })
     }
 
-    // 使用 SM-2 算法计算新的复习参数
     const sm2Result = calculateSM2(
       quality as ReviewQuality,
       progress.repetitions,
       progress.easeFactor,
-      progress.interval
+      progress.interval,
+      progress.lapses
     )
 
-    // 更新复习进度
     const updatedProgress = await prisma.reviewProgress.update({
       where: { wordId: parseInt(wordId) },
       data: {
@@ -51,8 +39,9 @@ export async function POST(request: NextRequest) {
         interval: sm2Result.interval,
         easeFactor: sm2Result.easeFactor,
         repetitions: sm2Result.repetitions,
+        lapses: sm2Result.lapses,
         lastReviewed: new Date(),
-      },
+      } as Parameters<typeof prisma.reviewProgress.update>[0]['data'],
     })
 
     return NextResponse.json({
@@ -62,9 +51,6 @@ export async function POST(request: NextRequest) {
     })
   } catch (error) {
     console.error('提交复习失败:', error)
-    return NextResponse.json(
-      { error: '提交复习失败' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: '提交复习失败' }, { status: 500 })
   }
 }

@@ -7,6 +7,15 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const search = searchParams.get('search') || ''
     const letter = searchParams.get('letter') || ''
+    const exact = searchParams.get('exact') || ''
+
+    // 精确词名匹配（仅用于重复检测，返回轻量数据）
+    if (exact) {
+      const results = await prisma.$queryRaw<Array<{ id: number; term: string }>>`
+        SELECT id, term FROM "Word" WHERE LOWER(term) = LOWER(${exact}) LIMIT 1
+      `
+      return NextResponse.json(results)
+    }
 
     const where: any = {}
 
@@ -48,7 +57,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { term, phonetic, definition, tags, examples } = body
+    const { term, phonetic, partOfSpeech, definition, variants, tags, examples } = body
 
     // 验证必填字段
     if (!term || !definition) {
@@ -63,21 +72,22 @@ export async function POST(request: NextRequest) {
       data: {
         term,
         phonetic,
+        partOfSpeech,
         definition,
+        variants,
         tags,
         examples: {
           create: examples || [],
         },
-        // 创建初始复习进度
         progress: {
           create: {
-            nextReview: new Date(), // 新单词立即需要复习
+            nextReview: new Date(),
             interval: 0,
             easeFactor: 2.5,
             repetitions: 0,
           },
         },
-      },
+      } as Parameters<typeof prisma.word.create>[0]['data'],
       include: {
         examples: true,
         progress: true,

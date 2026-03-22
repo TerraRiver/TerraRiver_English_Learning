@@ -9,69 +9,63 @@ export interface SM2Result {
   interval: number      // 下次复习间隔（天）
   repetitions: number   // 连续成功复习次数
   easeFactor: number    // 难度系数 (EF)
+  lapses: number        // 累计遗忘次数
   nextReview: Date      // 下次复习日期
 }
 
+const EF_MIN = 1.3
+const EF_MAX = 5.0
+
 /**
  * 计算下次复习参数
- * @param quality 用户反馈质量 ('again' | 'hard' | 'good' | 'easy')
- * @param repetitions 当前连续成功次数
- * @param easeFactor 当前难度系数
- * @param interval 当前间隔天数
- * @returns SM2Result 包含下次复习的所有参数
+ * @param quality      用户反馈质量
+ * @param repetitions  当前连续成功次数
+ * @param easeFactor   当前难度系数
+ * @param interval     当前间隔天数
+ * @param lapses       历史遗忘次数
  */
 export function calculateSM2(
   quality: ReviewQuality,
   repetitions: number,
   easeFactor: number,
-  interval: number
+  interval: number,
+  lapses: number
 ): SM2Result {
   // 将质量映射为分数 (0-5)
-  const qualityScore = {
-    again: 0,  // 完全不记得
-    hard: 3,   // 想了很久才记起
-    good: 4,   // 犹豫后想起
-    easy: 5,   // 轻松记起
-  }[quality]
+  const qualityScore = { again: 0, hard: 3, good: 4, easy: 5 }[quality]
 
-  // 计算新的难度系数 (EF)
+  // 更新难度系数，并钳制在 [EF_MIN, EF_MAX]
   let newEF = easeFactor + (0.1 - (5 - qualityScore) * (0.08 + (5 - qualityScore) * 0.02))
-
-  // EF 不能低于 1.3
-  if (newEF < 1.3) {
-    newEF = 1.3
-  }
+  newEF = Math.min(Math.max(newEF, EF_MIN), EF_MAX)
 
   let newInterval: number
   let newRepetitions: number
+  let newLapses = lapses
 
-  // 如果回答质量低于 3（即 'again'），重置进度
   if (qualityScore < 3) {
+    // 遗忘：重置进度，遗忘次数 +1
     newRepetitions = 0
-    newInterval = 1  // 明天再复习
+    newInterval = 1
+    newLapses = lapses + 1
   } else {
     newRepetitions = repetitions + 1
 
-    // 根据重复次数计算间隔
     if (newRepetitions === 1) {
-      newInterval = 1  // 第一次：1天
+      newInterval = 1
     } else if (newRepetitions === 2) {
-      newInterval = 6  // 第二次：6天
+      newInterval = 6
     } else {
-      // 第三次及以后：上次间隔 * EF
       newInterval = Math.round(interval * newEF)
     }
   }
 
-  // 根据质量微调间隔
+  // 按评分微调间隔
   if (quality === 'easy') {
-    newInterval = Math.round(newInterval * 1.3)  // 简单：间隔 +30%
+    newInterval = Math.round(newInterval * 1.3)
   } else if (quality === 'hard') {
-    newInterval = Math.round(newInterval * 0.85) // 困难：间隔 -15%
-    newInterval = Math.max(newInterval, 1)       // 最少1天
+    newInterval = Math.max(Math.round(newInterval * 0.85), 1)
   }
 
-  // 计算下次复习日期
   const nextReview = new Date()
   nextReview.setDate(nextReview.getDate() + newInterval)
 
@@ -79,14 +73,13 @@ export function calculateSM2(
     interval: newInterval,
     repetitions: newRepetitions,
     easeFactor: newEF,
+    lapses: newLapses,
     nextReview,
   }
 }
 
 /**
- * 获取今日应复习的单词数量
- * @param nextReviewDate 下次复习日期
- * @returns boolean 是否需要复习
+ * 判断单词是否在今天或之前到期
  */
 export function isDueForReview(nextReviewDate: Date): boolean {
   const today = new Date()

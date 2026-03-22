@@ -1,263 +1,125 @@
-# IR 英语学术知识库 (IR-EKB) 开发设计文档
+# Project Lexicon — 个人英语词汇管理工具
 
-版本: v1.0
+自托管的个人英语单词本，支持语境例句记录、AI 辅助录入和 SM-2 间隔重复复习。
 
-作者: Gemini & 用户
+## 功能
 
-日期: 2026-01-19
+- **词条管理**：录入单词/短语，支持音标、词性、释义、变体、标签（四级/六级/雅思/学术/通用/其他）和多条例句（英文 + 中文译文 + 出处）
+- **AI 辅助录入**：输入单词后一键调用 DeepSeek API，自动补全音标、释义、标签和例句
+- **词典浏览**：A–Z 字母索引筛选 + 实时搜索
+- **间隔复习**：基于 SM-2 算法的抽卡复习，四级反馈（Again / Hard / Good / Easy）
+- **即时发音**：调用浏览器原生 Web Speech API，单词和例句均可朗读
+- **统计仪表盘**：总词条数、今日待复习数、最近添加的词条
 
-项目代号: Project Lexicon
+## 环境要求
 
-## 1. 项目背景与目标
+- **Node.js** 18 或更高版本
+- （可选）**DeepSeek API Key**，用于 AI 辅助录入功能
 
-### 1.1 背景
+## 部署步骤
 
-作为国际关系（International Relations, IR）领域的高校研究者/学生，在阅读大量英文文献（Foreign Affairs, Diplomat, 学术论文）时，积累了大量具有特定语境和专业含义的词汇。传统的单词APP无法满足“语境记忆”和“多义词深度解析”的需求。
+### 1. 克隆仓库
 
-### 1.2 目标
-
-构建一个**自托管、轻量级、专注于语境学习**的个人Web应用。
-
-* **知识库属性** ：以“词条”为核心，支持无限量的例句关联。
-* **工具属性** ：提供即时发音（TTS）和基于 SM-2 算法的间隔重复复习功能。
-* **技术属性** ：基于现代 Web 技术栈（Next.js），易于维护和扩展。
-
-## 2. 技术架构选型
-
-### 2.1 核心技术栈
-
-* **前端框架** : **Next.js 14+ (App Router)**
-* *理由* : React 生态首选，自带路由和 API 后端能力，支持服务端渲染 (SSR) 提升首屏速度，开发体验极佳。
-* **开发语言** : **TypeScript**
-* *理由* : 强类型约束，对于处理复杂的复习算法和数据库关系非常必要，减少运行时错误。
-* **数据库** : **SQLite**
-* *理由* : 单文件数据库，无需配置服务器进程，易于备份（直接拷贝文件），完全满足个人单用户的数据量级。
-* **ORM 工具** : **Prisma**
-* *理由* : 提供类型安全的数据库操作，Schema 定义清晰，自动生成迁移文件，大大降低 SQL 编写门槛。
-* **样式方案** : **Tailwind CSS**
-* *理由* : 原子化 CSS，无需在多个文件间切换，快速构建响应式界面。
-* **语音合成** : **Web Speech API (Browser Native)**
-* *理由* : 调用浏览器原生能力，零成本、零存储、无网络延迟。
-
-### 2.2 系统架构图
-
-```
-graph TD
-    User[用户] --> |浏览器访问| Client[Next.js 前端页面]
-    Client --> |TTS 调用| BrowserAPI[Web Speech API]
-    Client --> |API 请求| Server[Next.js API Routes]
-    Server --> |ORM 操作| Prisma[Prisma Client]
-    Prisma --> |读写| DB[(SQLite 数据库)]
-  
-    subgraph 核心模块
-    Dash[仪表盘]
-    Dict[词条管理]
-    Review[复习系统/算法]
-    end
-
+```bash
+git clone <仓库地址>
+cd terrariver_english_learning
 ```
 
-## 3. 功能需求详细设计
+### 2. 安装依赖
 
-### 3.1 核心模块：词条管理 (Encyclopedia)
-
-* **词条录入** :
-* 输入单词/短语 (Term)。
-* 输入音标文本 (Phonetic, 可选)。
-* 输入释义 (Definition)。
-* 添加标签 (Tags, 如 "Realism", "Economy")。
-* **动态添加例句** : 支持在一个词条下添加 N 条例句，每条包含：英文原句 + 中文翻译 + 出处（可选）。
-* **词条展示** :
-* 百科式详情页，清晰展示单词元数据和所有例句。
-* **点击发音** : 单词旁和例句旁均有“小喇叭”按钮，点击即读。
-* **检索与索引** :
-* **A-Z 索引页** : 侧边栏或顶部导航按首字母分类。
-* **即时搜索** : 顶部搜索框，输入时实时过滤列表。
-
-### 3.2 核心模块：复习系统 (The Coach)
-
-* **每日任务** : 首页显示“今日待复习”数量。
-* **抽卡复习模式** :
-
-1. **正面** : 显示单词 + 音标 (隐藏释义和例句)。
-2. **思考** : 用户自测。
-3. **翻面** : 点击“Show Answer”，展示释义、变体和所有例句。
-4. **反馈** : 用户选择掌握程度按钮：
-   * `Again` (重来): 间隔归零。
-   * `Hard` (困难): 间隔微增。
-   * `Good` (良好): 正常算法增长。
-   * `Easy` (简单): 大幅增长。
-
-* **算法逻辑** : 后端集成简易版  **SM-2 算法** ，根据反馈计算下一次复习的具体日期。
-
-## 4. 数据库设计 (Schema)
-
-使用 Prisma Schema Language 描述。
-
-```
-// schema.prisma
-
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
-}
-
-// 1. 单词/词条表
-model Word {
-  id          Int      @id @default(autoincrement())
-  term        String   @unique                 // 单词本身，唯一
-  phonetic    String?                          // 音标文本，如 "/tɜːrm/"
-  definition  String                           // 主要释义
-  tags        String?                          // 标签，用逗号分隔字符串存储，如 "IR,Economy"
-  
-  // 关联
-  examples    Example[]                        // 一对多：一个单词有多个例句
-  progress    ReviewProgress?                  // 一对一：一个单词对应一个复习进度
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-}
-
-// 2. 例句表
-model Example {
-  id          Int      @id @default(autoincrement())
-  sentenceEn  String                           // 英文原句
-  sentenceCn  String?                          // 中文翻译
-  source      String?                          // 出处，如 "Foreign Affairs 2024-05"
-  
-  wordId      Int
-  word        Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
-}
-
-// 3. 复习进度表 (基于 SM-2 算法参数)
-model ReviewProgress {
-  id            Int       @id @default(autoincrement())
-  wordId        Int       @unique
-  word          Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
-  
-  nextReview    DateTime  // 下一次复习的具体日期
-  interval      Int       @default(0)   // 当前间隔天数
-  easeFactor    Float     @default(2.5) // 难度系数 (EF)，初始为 2.5
-  repetitions   Int       @default(0)   // 连续成功复习次数
-  
-  lastReviewed  DateTime  @default(now()) // 上次复习时间
-}
-
+```bash
+npm install
 ```
 
-## 5. 页面路由规划 (Next.js App Router)
+### 3. 配置环境变量
 
-* `app/page.tsx`: **首页 (Dashboard)**
-  * 展示今日复习概览、最近添加的词条列表、快速添加入口。
-* `app/dictionary/page.tsx`: **词条索引页**
-  * 包含搜索框、A-Z 筛选器、词条列表。
-* `app/word/[id]/page.tsx`: **词条详情页**
-  * 展示完整信息、发音组件、编辑/删除按钮。
-* `app/word/new/page.tsx`: **新建词条页**
-  * 表单页面，支持动态增减例句输入框。
-* `app/review/page.tsx`: **复习中心**
-  * 沉浸式复习界面（Flashcard UI）。
+在项目根目录创建 `.env` 文件：
 
-## 6. 关键组件开发计划
+```bash
+cp .env.example .env   # 如果有示例文件
+# 或直接新建
+```
 
-1. **`<SpeakButton text={string} />`**
-   * 封装 `window.speechSynthesis`。
-   * 接收文本参数，点击播放音频。
-2. **`<ExampleListEditable />`**
-   * 在新建/编辑页面使用。
-   * 允许用户点击“+ Add Example”动态增加输入框组。
-3. **`<FlashCard />`**
-   * 复习页面的核心交互组件，包含翻转动画和底部评分栏。
+`.env` 内容如下：
 
-## 7. 后续扩展性规划 (V2.0)
+```env
+# 数据库路径（SQLite，保持默认即可）
+DATABASE_URL="file:./dev.db"
 
-* **AI 辅助录入** : 集成 DeepSeek 或 OpenAI API，输入单词自动生成释义和 IR 领域的经典例句。
-* **数据导出** : 支持导出为 Anki 格式 (`.apkg`) 或 CSV 备份。
-* **统计图表** : 使用 Recharts 展示每日复习量的趋势图。
+# DeepSeek API Key（可选，不填则 AI 补全功能不可用）
+# 前往 https://platform.deepseek.com 获取
+DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+### 4. 初始化数据库
+
+首次部署时执行，创建数据库文件并应用所有迁移：
+
+```bash
+npx prisma migrate deploy
+```
+
+> 开发环境也可以用 `npx prisma migrate dev`，效果相同但会提示命名迁移。
+
+### 5. 生成 Prisma Client
+
+```bash
+npx prisma generate
+```
+
+> `npm install` 通常会自动触发此步骤，若 Prisma Client 报错时手动执行。
+
+### 6. 启动服务
+
+**开发模式**（热重载，适合本地调试）：
+
+```bash
+npm run dev
+```
+
+**生产模式**：
+
+```bash
+npm run build
+npm start
+```
+
+访问 [http://localhost:3000](http://localhost:3000)
 
 ---
 
-## 8. 开发计划与待办事项
+## 常用命令
 
-### 阶段一：项目初始化和环境配置
+```bash
+npm run dev              # 开发模式（热重载）
+npm run build            # 生产构建
+npm start                # 启动生产服务器
+npm run lint             # ESLint 代码检查
 
-- [ ] 
-  - [ ] 创建Next.js 14+ 项目（使用App Router）
-  - [ ] 配置TypeScript
-  - [ ] 安装和配置Tailwind CSS
-  - [ ] 设置基本的项目结构和文件夹
-- [ ] 
-  - [ ] 安装Prisma依赖
-  - [ ] 初始化Prisma
-  - [ ] 配置.env文件和数据库连接
-  - [ ] 设置.gitignore
-- [ ] 
-  - [ ] 根据第4节设计创建完整的schema.prisma文件
-  - [ ] 定义Word、Example、ReviewProgress三个模型
-  - [ ] 执行prisma migrate并生成客户端
+npx prisma studio        # 可视化数据库管理界面（浏览器打开）
+npx prisma migrate dev   # 修改 schema 后创建并应用新迁移
+npx prisma generate      # 重新生成 Prisma Client
+```
 
-### 阶段二：核心功能开发
+## 数据备份与迁移
 
-- [ ] 
-  - [ ] 创建lib/sm2.ts工具文件
-  - [ ] 实现SM-2算法的核心计算逻辑
-  - [ ] 处理Again、Hard、Good、Easy四种反馈等级
-- [ ] 
-  - [ ] `<SpeakButton>`: 封装Web Speech API
-  - [ ] `<ExampleListEditable>`: 动态例句输入组件
+数据库是单文件 SQLite，备份只需复制该文件：
 
-### 阶段三：页面和API开发
+```bash
+cp prisma/dev.db prisma/dev.db.bak
+```
 
-- [ ] 
-  - [ ] app/page.tsx页面布局
-  - [ ] 显示今日待复习数量
-  - [ ] 显示最近添加的词条
-  - [ ] 快速添加入口
-  - [ ] API路由：/api/dashboard
-- [ ] 
-  - [ ] app/word/new/page.tsx: 新建词条表单
-  - [ ] API路由：POST /api/words（创建）
-  - [ ] API路由：PUT /api/words/[id]（编辑）
-  - [ ] API路由：DELETE /api/words/[id]（删除）
-  - [ ] 支持动态添加多个例句
-- [ ] 
-  - [ ] app/dictionary/page.tsx
-  - [ ] A-Z字母索引筛选功能
-  - [ ] 实时搜索过滤
-  - [ ] API路由：GET /api/words（支持搜索参数）
-- [ ] 
-  - [ ] app/word/[id]/page.tsx
-  - [ ] 展示完整词条信息
-  - [ ] 集成SpeakButton组件
-  - [ ] 显示所有关联例句
-  - [ ] 编辑/删除操作
+迁移到新机器时，将 `prisma/dev.db` 复制到目标环境的同路径下，确保 `DATABASE_URL` 指向该文件即可，无需重新初始化数据库。
 
-### 阶段四：复习系统
+## 技术栈
 
-- [ ] 
-  - [ ] app/review/page.tsx
-  - [ ] `<FlashCard>`: 卡片翻转UI
-  - [ ] 正反面切换动画
-  - [ ] 四个难度评级按钮
-- [ ] 
-  - [ ] API路由：GET /api/review（获取今日待复习）
-  - [ ] API路由：POST /api/review/submit（提交复习反馈）
-  - [ ] 集成SM-2算法更新ReviewProgress
-  - [ ] 计算下次复习时间
-
-### 阶段五：优化和测试
-
-- [ ] 
-  - [ ] 完善Tailwind CSS样式
-  - [ ] 确保移动端适配
-  - [ ] 添加加载状态和错误提示
-  - [ ] 优化用户体验
-- [ ] 
-  - [ ] 功能测试
-  - [ ] 边界情况处理
-  - [ ] 性能优化
-  - [ ] 数据库操作验证
+| 层级 | 技术 |
+|------|------|
+| 框架 | Next.js 16 (App Router) |
+| 语言 | TypeScript |
+| 数据库 | SQLite |
+| ORM | Prisma 5 |
+| 样式 | Tailwind CSS 4 |
+| AI 补全 | DeepSeek API (`deepseek-chat`) |
+| 复习算法 | SM-2 |
+| 发音 | Web Speech API |
