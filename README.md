@@ -42,6 +42,9 @@ npm install
 # 数据库路径（SQLite，保持默认即可）
 DATABASE_URL="file:./dev.db"
 
+# 访问密码（设置后所有页面需要登录才能访问，留空则不启用）
+ACCESS_PASSWORD="your-strong-password"
+
 # DeepSeek API Key（可选，不填则 AI 补全功能不可用）
 # 前往 https://platform.deepseek.com 获取
 DEEPSEEK_API_KEY="sk-xxxxxxxxxxxxxxxxxxxxxxxx"

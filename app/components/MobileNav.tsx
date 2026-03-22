@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 
 const NAV_LINKS = [
   { href: '/', label: '首页' },
@@ -13,6 +14,12 @@ const NAV_LINKS = [
 
 export default function MobileNav() {
   const [open, setOpen] = useState(false)
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
 
   return (
     <div className="sm:hidden">
@@ -39,11 +46,17 @@ export default function MobileNav() {
               key={link.href}
               href={link.href}
               onClick={() => setOpen(false)}
-              className="block px-6 py-4 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 border-b border-gray-50 last:border-0"
+              className="block px-6 py-4 text-sm text-gray-700 hover:bg-gray-50 active:bg-gray-100 border-b border-gray-50"
             >
               {link.label}
             </Link>
           ))}
+          <button
+            onClick={handleLogout}
+            className="block w-full text-left px-6 py-4 text-sm text-gray-400 hover:bg-gray-50 active:bg-gray-100"
+          >
+            退出登录
+          </button>
         </div>
       )}
     </div>

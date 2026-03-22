@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import MobileNav from "./components/MobileNav";
+import LogoutButton from "./components/LogoutButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
                   <a href="/review" className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 rounded-md hover:bg-gray-50 transition-colors">复习</a>
                   <a href="/stats" className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 rounded-md hover:bg-gray-50 transition-colors">统计</a>
                   <a href="/word/new" className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-900 rounded-md hover:bg-gray-50 transition-colors">添加词条</a>
+                  <LogoutButton />
                 </div>
               </div>
               <MobileNav />
