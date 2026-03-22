@@ -1,0 +1,51 @@
+// IR 英语学术知识库 - Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 1. 单词/词条表
+model Word {
+  id          Int      @id @default(autoincrement())
+  term        String   @unique                 // 单词本身，唯一
+  phonetic    String?                          // 音标文本，如 "/tɜːrm/"
+  definition  String                           // 主要释义
+  tags        String?                          // 标签，用逗号分隔字符串存储，如 "IR,Economy"
+
+  // 关联
+  examples    Example[]                        // 一对多：一个单词有多个例句
+  progress    ReviewProgress?                  // 一对一：一个单词对应一个复习进度
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// 2. 例句表
+model Example {
+  id          Int      @id @default(autoincrement())
+  sentenceEn  String                           // 英文原句
+  sentenceCn  String?                          // 中文翻译
+  source      String?                          // 出处，如 "Foreign Affairs 2024-05"
+
+  wordId      Int
+  word        Word     @relation(fields: [wordId], references: [id], onDelete: Cascade)
+}
+
+// 3. 复习进度表 (基于 SM-2 算法参数)
+model ReviewProgress {
+  id            Int       @id @default(autoincrement())
+  wordId        Int       @unique
+  word          Word      @relation(fields: [wordId], references: [id], onDelete: Cascade)
+
+  nextReview    DateTime  // 下一次复习的具体日期
+  interval      Int       @default(0)   // 当前间隔天数
+  easeFactor    Float     @default(2.5) // 难度系数 (EF)，初始为 2.5
+  repetitions   Int       @default(0)   // 连续成功复习次数
+
+  lastReviewed  DateTime  @default(now()) // 上次复习时间
+}

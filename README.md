@@ -178,3 +178,86 @@ model ReviewProgress {
 * **AI 辅助录入** : 集成 DeepSeek 或 OpenAI API，输入单词自动生成释义和 IR 领域的经典例句。
 * **数据导出** : 支持导出为 Anki 格式 (`.apkg`) 或 CSV 备份。
 * **统计图表** : 使用 Recharts 展示每日复习量的趋势图。
+
+---
+
+## 8. 开发计划与待办事项
+
+### 阶段一：项目初始化和环境配置
+
+- [ ] 
+  - [ ] 创建Next.js 14+ 项目（使用App Router）
+  - [ ] 配置TypeScript
+  - [ ] 安装和配置Tailwind CSS
+  - [ ] 设置基本的项目结构和文件夹
+- [ ] 
+  - [ ] 安装Prisma依赖
+  - [ ] 初始化Prisma
+  - [ ] 配置.env文件和数据库连接
+  - [ ] 设置.gitignore
+- [ ] 
+  - [ ] 根据第4节设计创建完整的schema.prisma文件
+  - [ ] 定义Word、Example、ReviewProgress三个模型
+  - [ ] 执行prisma migrate并生成客户端
+
+### 阶段二：核心功能开发
+
+- [ ] 
+  - [ ] 创建lib/sm2.ts工具文件
+  - [ ] 实现SM-2算法的核心计算逻辑
+  - [ ] 处理Again、Hard、Good、Easy四种反馈等级
+- [ ] 
+  - [ ] `<SpeakButton>`: 封装Web Speech API
+  - [ ] `<ExampleListEditable>`: 动态例句输入组件
+
+### 阶段三：页面和API开发
+
+- [ ] 
+  - [ ] app/page.tsx页面布局
+  - [ ] 显示今日待复习数量
+  - [ ] 显示最近添加的词条
+  - [ ] 快速添加入口
+  - [ ] API路由：/api/dashboard
+- [ ] 
+  - [ ] app/word/new/page.tsx: 新建词条表单
+  - [ ] API路由：POST /api/words（创建）
+  - [ ] API路由：PUT /api/words/[id]（编辑）
+  - [ ] API路由：DELETE /api/words/[id]（删除）
+  - [ ] 支持动态添加多个例句
+- [ ] 
+  - [ ] app/dictionary/page.tsx
+  - [ ] A-Z字母索引筛选功能
+  - [ ] 实时搜索过滤
+  - [ ] API路由：GET /api/words（支持搜索参数）
+- [ ] 
+  - [ ] app/word/[id]/page.tsx
+  - [ ] 展示完整词条信息
+  - [ ] 集成SpeakButton组件
+  - [ ] 显示所有关联例句
+  - [ ] 编辑/删除操作
+
+### 阶段四：复习系统
+
+- [ ] 
+  - [ ] app/review/page.tsx
+  - [ ] `<FlashCard>`: 卡片翻转UI
+  - [ ] 正反面切换动画
+  - [ ] 四个难度评级按钮
+- [ ] 
+  - [ ] API路由：GET /api/review（获取今日待复习）
+  - [ ] API路由：POST /api/review/submit（提交复习反馈）
+  - [ ] 集成SM-2算法更新ReviewProgress
+  - [ ] 计算下次复习时间
+
+### 阶段五：优化和测试
+
+- [ ] 
+  - [ ] 完善Tailwind CSS样式
+  - [ ] 确保移动端适配
+  - [ ] 添加加载状态和错误提示
+  - [ ] 优化用户体验
+- [ ] 
+  - [ ] 功能测试
+  - [ ] 边界情况处理
+  - [ ] 性能优化
+  - [ ] 数据库操作验证
